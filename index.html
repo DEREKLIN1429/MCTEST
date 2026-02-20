@@ -44,7 +44,6 @@
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
-        /* 隱藏 input number 的上下箭頭 */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
             -webkit-appearance: none; 
@@ -231,15 +230,12 @@
 
             // --- 0. 測試項目名稱 localStorage 暫存邏輯 ---
             const testItemNameInput = document.getElementById('test-item-name');
-            // 讀取先前暫存的名字
             if(localStorage.getItem('testItemName')) {
                 testItemNameInput.value = localStorage.getItem('testItemName');
             }
-            // 使用者輸入時即時存入 localStorage
             testItemNameInput.addEventListener('input', () => {
                 localStorage.setItem('testItemName', testItemNameInput.value);
             });
-
 
             // --- 1. 樣本數增減與手動輸入邏輯 ---
             const btnDecrement = document.getElementById('btn-decrement');
@@ -251,11 +247,10 @@
             let currentEntry = 1; 
 
             function updateProgressDisplay() {
-                sampleCountInput.value = targetCount; // 更新 input 顯示
+                sampleCountInput.value = targetCount; 
                 progressText.innerText = `進度: ${currentEntry - 1} / ${targetCount}`;
             }
 
-            // 監聽手動輸入
             sampleCountInput.addEventListener('input', (e) => {
                 const val = parseInt(e.target.value);
                 if (!isNaN(val) && val >= 1) {
@@ -276,7 +271,6 @@
                 updateProgressDisplay();
             });
 
-
             // --- 2. 相機拍照與預覽邏輯 ---
             const uploadZone = document.getElementById('upload-zone');
             const cameraInput = document.getElementById('camera-input');
@@ -286,9 +280,7 @@
             const uploadTextMain = document.getElementById('upload-text-main');
 
             uploadZone.addEventListener('click', (e) => {
-                if (e.target !== cameraInput) {
-                    cameraInput.click();
-                }
+                if (e.target !== cameraInput) cameraInput.click();
             });
 
             cameraInput.addEventListener('change', function() {
@@ -306,12 +298,9 @@
                 }
             });
 
-
             // --- 3. 小數位數設定與自動判定邏輯 ---
             const decimalPlacesSelect = document.getElementById('decimal-places');
-            function getDecimalPlaces() {
-                return parseInt(decimalPlacesSelect.value) || 0;
-            }
+            function getDecimalPlaces() { return parseInt(decimalPlacesSelect.value) || 0; }
 
             const specOverlapTarget = document.getElementById('spec-overlap-target');
             const specOverlapTol = document.getElementById('spec-overlap-tol');
@@ -325,24 +314,21 @@
             const btnConfirm = document.getElementById('btn-confirm');
             
             let currentJudgeStatus = 'OK'; 
-            let currentOverlapOk = true; // 紀錄 Overlap 單獨是否合格
-            let currentOffsetOk = true;  // 紀錄 Offset 單獨是否合格
+            let currentOverlapOk = true; 
+            let currentOffsetOk = true;  
 
             function checkAutoJudge() {
                 const dec = getDecimalPlaces();
 
-                // 取得規格數值
                 const oTarget = parseFloat(specOverlapTarget.value) || 0;
                 const oTol = parseFloat(specOverlapTol.value) || 0;
                 const sTarget = parseFloat(specOffsetTarget.value) || 0;
                 const sTol = parseFloat(specOffsetTol.value) || 0;
 
-                // 👉 核心邏輯：計算標準範圍 ( Min ~ Max ) 並套用小數位數
                 const minRange = (oTarget - oTol).toFixed(dec);
                 const maxRange = (oTarget + oTol).toFixed(dec);
                 specRangeInput.value = `${minRange} ~ ${maxRange}`;
 
-                // 取得輸入數值
                 const oVal = parseFloat(inputOverlap.value);
                 const sVal = parseFloat(inputOffset.value);
 
@@ -353,7 +339,6 @@
                     return;
                 }
 
-                // 判斷是否合格
                 currentOverlapOk = Math.abs(oVal - oTarget) <= oTol;
                 currentOffsetOk = Math.abs(sVal - sTarget) <= sTol;
 
@@ -368,7 +353,6 @@
                 }
             }
 
-            // 綁定輸入事件與小數位數變更事件
             decimalPlacesSelect.addEventListener('change', checkAutoJudge);
             inputOverlap.addEventListener('input', checkAutoJudge);
             inputOffset.addEventListener('input', checkAutoJudge);
@@ -376,7 +360,6 @@
             specOverlapTol.addEventListener('input', checkAutoJudge);
             specOffsetTarget.addEventListener('input', checkAutoJudge);
             specOffsetTol.addEventListener('input', checkAutoJudge);
-
 
             // --- 4. 數據記錄與確認按鈕邏輯 ---
             const activeEntryNo = document.getElementById('active-entry-no');
@@ -390,25 +373,21 @@
 
                 const dec = getDecimalPlaces();
                 
-                // 套用小數位數格式化
                 const overlapValStr = parseFloat(inputOverlap.value).toFixed(dec);
                 const offsetValStr = parseFloat(inputOffset.value).toFixed(dec);
-                const specRangeVal = specRangeInput.value; 
 
                 const statusColor = currentJudgeStatus === 'OK' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
 
-                // 👉 如果單一數值不合格，套用紅字樣式
                 const overlapTextClass = currentOverlapOk ? '' : 'text-red-500 font-bold';
                 const offsetTextClass = currentOffsetOk ? '' : 'text-red-500 font-bold';
 
-                // 將格式化後的資料儲存到陣列中
+                // 👉 記錄時將單項合格狀態一起存入，給 Excel 排版用
                 recordsData.push({
                     "編號": currentEntry,
-                    "接疊量 (Overlap)": overlapValStr,
-                    "接合段差 (Offset)": offsetValStr,
-                    "標準範圍": specRangeVal,
-                    "外觀判定": currentJudgeStatus,
-                    "紀錄時間": new Date().toLocaleString()
+                    "接疊量": overlapValStr,
+                    "isOverlapOk": currentOverlapOk,
+                    "接合段差": offsetValStr,
+                    "isOffsetOk": currentOffsetOk
                 });
 
                 const logEntryHTML = `
@@ -435,8 +414,7 @@
 
             btnConfirm.addEventListener('click', logData);
 
-
-            // --- 5. 匯出 EXCEL 邏輯 ---
+            // --- 5. 匯出 EXCEL 邏輯 (完全客製化排版) ---
             const btnExport = document.getElementById('btn-export');
 
             btnExport.addEventListener('click', () => {
@@ -444,10 +422,96 @@
                     alert("目前沒有任何紀錄可以轉出喔！請先新增數據。");
                     return;
                 }
-                const itemName = testItemNameInput.value.trim() || "未命名測試項目";
-                const fileName = `試車紀錄_${itemName}.xlsx`;
+                const itemName = testItemNameInput.value.trim() || "未命名";
+                const fileName = `表單八_${itemName}.xlsx`;
 
-                const worksheet = XLSX.utils.json_to_sheet(recordsData);
+                // 準備客製化版面用的二維陣列
+                const aoa = [];
+                const merges = [];
+                let currentRowIdx = 0;
+
+                // 讀取當前畫面上的規格設定
+                const oTarget = specOverlapTarget.value;
+                const oTol = specOverlapTol.value;
+                const sTarget = specOffsetTarget.value; // 如果不需要可以留空，依據圖片為 0 或不顯示
+                const sTol = specOffsetTol.value;
+
+                // 1. 大標題列
+                aoa.push([`表單八：實物貼合精度 - ${itemName}`]);
+                merges.push({s: {r: currentRowIdx, c: 0}, e: {r: currentRowIdx, c: 9}}); // 合併 A1~J1
+                currentRowIdx++;
+
+                aoa.push([]); // 空行
+                currentRowIdx++;
+
+                // 2. 規格要求區塊 (靠右排版)
+                aoa.push(["", "", "", "", "", "規格要求", "", "", "", ""]);
+                merges.push({s: {r: currentRowIdx, c: 5}, e: {r: currentRowIdx, c: 9}});
+                currentRowIdx++;
+                
+                aoa.push(["", "", "", "", "", `8.1 接疊量 (Overlap): ${oTarget} ± ${oTol} mm`, "", "", "", ""]);
+                merges.push({s: {r: currentRowIdx, c: 5}, e: {r: currentRowIdx, c: 9}});
+                currentRowIdx++;
+                
+                aoa.push(["", "", "", "", "", `8.2 接合段差 (Offset): ± ${sTol} mm`, "", "", "", ""]);
+                merges.push({s: {r: currentRowIdx, c: 5}, e: {r: currentRowIdx, c: 9}});
+                currentRowIdx++;
+                
+                aoa.push(["", "", "", "", "", "8.3 尖角外觀: 無下垂 / 無反摺", "", "", "", ""]);
+                merges.push({s: {r: currentRowIdx, c: 5}, e: {r: currentRowIdx, c: 9}});
+                currentRowIdx++;
+
+                aoa.push([]); // 空行
+                currentRowIdx++;
+
+                // 3. 數據區塊標題
+                aoa.push([`連續 ${targetCount} 組數據記錄 (Test No. 01-${String(targetCount).padStart(2, '0')})`]);
+                merges.push({s: {r: currentRowIdx, c: 0}, e: {r: currentRowIdx, c: 9}});
+                currentRowIdx++;
+
+                // 4. 動態生成 10欄xN列 的網格
+                const columnsPerRow = 10;
+                for (let i = 0; i < targetCount; i += columnsPerRow) {
+                    let headerRow = [];
+                    let overlapRow = [];
+                    let offsetRow = [];
+                    
+                    for (let j = 0; j < columnsPerRow; j++) {
+                        let recIndex = i + j;
+                        if (recIndex < targetCount) {
+                            let recNoStr = String(recIndex + 1).padStart(2, '0');
+                            headerRow.push(`No. ${recNoStr}`);
+                            
+                            let rec = recordsData.find(r => r["編號"] === (recIndex + 1));
+                            if (rec) {
+                                // 若單項不合格，加上 (NG) 標記以便在 Excel 中辨識
+                                overlapRow.push(rec.isOverlapOk ? rec["接疊量"] : `(NG) ${rec["接疊量"]}`);
+                                offsetRow.push(rec.isOffsetOk ? rec["接合段差"] : `(NG) ${rec["接合段差"]}`);
+                            } else {
+                                overlapRow.push("");
+                                offsetRow.push("");
+                            }
+                        } else {
+                            headerRow.push(""); overlapRow.push(""); offsetRow.push("");
+                        }
+                    }
+                    
+                    aoa.push(headerRow);
+                    aoa.push(overlapRow);
+                    aoa.push(offsetRow);
+                    aoa.push([]); // 每 10 筆資料後的空隙
+                    currentRowIdx += 4;
+                }
+
+                // 5. 底部備註
+                aoa.push(["驗證過程中不可超出標準。"]);
+                merges.push({s: {r: currentRowIdx, c: 0}, e: {r: currentRowIdx, c: 9}});
+
+                // --- 將版面轉換為 Sheet 並設定欄寬 ---
+                const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+                worksheet['!merges'] = merges;
+                worksheet['!cols'] = Array(10).fill({ wch: 10 }); // 統一每欄的寬度
+
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "數據紀錄");
                 XLSX.writeFile(workbook, fileName);
