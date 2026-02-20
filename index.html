@@ -45,10 +45,14 @@
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
-        /* 保留輸入框的上下箭頭（預設行為），讓使用者可以按鍵盤上下微調 */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col relative">
     <header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div class="flex items-center justify-between p-4">
             <div class="flex items-center gap-3">
@@ -90,7 +94,7 @@
                             <button type="button" id="btn-decrement" class="w-8 h-8 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white transition-colors">
                                 <span class="material-symbols-outlined text-sm">remove</span>
                             </button>
-                            <input id="sample-count" type="number" value="30" class="w-12 text-center font-bold bg-transparent border-b border-dashed border-slate-400 focus:outline-none focus:border-primary">
+                            <input id="sample-count" type="number" value="30" class="w-20 text-center font-bold bg-transparent border-b border-dashed border-slate-400 focus:outline-none focus:border-primary">
                             <button type="button" id="btn-increment" class="w-8 h-8 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white transition-colors">
                                 <span class="material-symbols-outlined text-sm">add</span>
                             </button>
@@ -206,9 +210,9 @@
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 p-4 flex gap-4">
-        <button type="button" class="flex-1 py-4 px-6 bg-slate-100 dark:bg-slate-800 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined">save</span>
-            暫存
+        <button type="button" id="btn-open-settings" class="flex-1 py-4 px-4 bg-slate-100 dark:bg-slate-800 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined">table_chart</span>
+            版面設定
         </button>
         <button type="button" id="btn-export" class="flex-[2] py-4 px-6 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2">
             <span class="material-symbols-outlined">download</span>
@@ -216,8 +220,45 @@
         </button>
     </nav>
     
-    <div class="fixed bottom-0 left-0 right-0 pointer-events-none">
-        <div class="flex justify-around items-end h-2 pb-1 pointer-events-auto"></div>
+    <div id="excel-settings-modal" class="fixed inset-0 z-[100] bg-black/60 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in border border-slate-200 dark:border-slate-800">
+            <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">tune</span>
+                    <h3 class="font-bold text-lg">Excel 寬高設定</h3>
+                </div>
+                <button type="button" id="btn-close-settings" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex gap-6 custom-scrollbar">
+                <div class="flex-1 space-y-3">
+                    <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <h4 class="font-bold text-primary text-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">view_column</span> 欄位寬度
+                        </h4>
+                        <p class="text-[10px] text-slate-500">A ~ K 欄</p>
+                    </div>
+                    <div id="col-settings-container" class="space-y-2">
+                        </div>
+                </div>
+                <div class="flex-1 space-y-3">
+                    <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <h4 class="font-bold text-primary text-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">table_rows</span> 列位高度
+                        </h4>
+                        <p class="text-[10px] text-slate-500">第 1 ~ 23 列</p>
+                    </div>
+                    <div id="row-settings-container" class="space-y-2">
+                        </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                <button type="button" id="btn-save-settings" class="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                    套用並儲存設定
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -308,7 +349,6 @@
             let currentOverlapOk = true; 
             let currentOffsetOk = true;  
 
-            // 更新所有輸入框的 step 屬性
             function updateStepAttributes() {
                 const dec = getDecimalPlaces();
                 const stepValue = (1 / Math.pow(10, dec)).toString();
@@ -320,7 +360,6 @@
                 specOffsetTarget.setAttribute('step', stepValue);
                 specOffsetTol.setAttribute('step', stepValue);
 
-                // 更新歷史紀錄中已生成的隱藏輸入框 step
                 document.querySelectorAll('.edit-input').forEach(el => {
                     el.setAttribute('step', stepValue);
                 });
@@ -328,7 +367,6 @@
 
             function checkAutoJudge() {
                 const dec = getDecimalPlaces();
-                
                 const oTarget = parseFloat(specOverlapTarget.value) || 0;
                 const oTol = parseFloat(specOverlapTol.value) || 0;
                 const sTarget = parseFloat(specOffsetTarget.value) || 0;
@@ -362,7 +400,6 @@
                 }
             }
 
-            // 當小數位數變更時，同時更新 step 並重新判定
             decimalPlacesSelect.addEventListener('change', () => {
                 updateStepAttributes();
                 checkAutoJudge();
@@ -374,7 +411,7 @@
             specOffsetTarget.addEventListener('input', checkAutoJudge);
             specOffsetTol.addEventListener('input', checkAutoJudge);
 
-            // --- 4. 數據記錄與「修改歷史紀錄」邏輯 ---
+            // --- 4. 數據記錄邏輯 ---
             const activeEntryNo = document.getElementById('active-entry-no');
             const logContainer = document.getElementById('log-container');
 
@@ -390,7 +427,6 @@
                 const overlapValStr = parseFloat(inputOverlap.value).toFixed(dec);
                 const offsetValStr = parseFloat(inputOffset.value).toFixed(dec);
                 const statusColor = currentJudgeStatus === 'OK' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
-
                 const overlapTextClass = currentOverlapOk ? 'text-slate-700 dark:text-slate-200' : 'text-red-500 font-bold';
                 const offsetTextClass = currentOffsetOk ? 'text-slate-700 dark:text-slate-200' : 'text-red-500 font-bold';
 
@@ -403,7 +439,6 @@
                     "外觀判定": currentJudgeStatus
                 });
 
-                // 將歷史紀錄的數字改為可直接編輯的 <input>
                 const logEntryHTML = `
                     <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs animate-fade-in mb-3">
                         <div class="flex items-center gap-4">
@@ -431,11 +466,10 @@
 
             btnConfirm.addEventListener('click', logData);
 
-            // 監聽歷史紀錄的輸入框改變 (Event Delegation)
             logContainer.addEventListener('change', (e) => {
                 if (e.target.classList.contains('edit-input')) {
                     const id = parseInt(e.target.dataset.id);
-                    const field = e.target.dataset.field; // 'overlap' or 'offset'
+                    const field = e.target.dataset.field; 
                     let newVal = parseFloat(e.target.value);
 
                     let rec = recordsData.find(r => r["編號"] === id);
@@ -443,12 +477,11 @@
 
                     const dec = getDecimalPlaces();
                     let formattedVal = isNaN(newVal) ? (0).toFixed(dec) : newVal.toFixed(dec);
-                    e.target.value = formattedVal; // 強制格式化顯示
+                    e.target.value = formattedVal; 
 
                     if (field === 'overlap') rec["接疊量"] = formattedVal;
                     if (field === 'offset') rec["接合段差"] = formattedVal;
 
-                    // 重新抓取最新公差進行判定
                     const oTarget = parseFloat(specOverlapTarget.value) || 0;
                     const oTol = parseFloat(specOverlapTol.value) || 0;
                     const sTarget = parseFloat(specOffsetTarget.value) || 0;
@@ -457,14 +490,12 @@
                     rec.isOverlapOk = Math.abs(parseFloat(rec["接疊量"]) - oTarget) <= oTol;
                     rec.isOffsetOk = Math.abs(parseFloat(rec["接合段差"]) - sTarget) <= sTol;
 
-                    // 更新文字顏色
                     if (field === 'overlap') {
                         e.target.className = `edit-input w-12 bg-transparent border-b border-dashed border-slate-400 text-center outline-none p-0 focus:border-primary ${rec.isOverlapOk ? 'text-slate-700 dark:text-slate-200' : 'text-red-500 font-bold'}`;
                     } else {
                         e.target.className = `edit-input w-12 bg-transparent border-b border-dashed border-slate-400 text-center outline-none p-0 focus:border-primary ${rec.isOffsetOk ? 'text-slate-700 dark:text-slate-200' : 'text-red-500 font-bold'}`;
                     }
 
-                    // 更新右側 OK/NG 狀態
                     const pill = document.getElementById(`status-pill-${id}`);
                     if (rec.isOverlapOk && rec.isOffsetOk) {
                         pill.className = "px-2 py-0.5 bg-green-500/20 text-green-500 rounded font-bold";
@@ -478,7 +509,66 @@
                 }
             });
 
-            // --- 5. 匯出 ExcelJS 邏輯 (包含檔名連動、隱藏格線、列高設定) ---
+            // --- 👉 5. Excel 寬高設定 (Modal 控制與資料結構) ---
+            const btnOpenSettings = document.getElementById('btn-open-settings');
+            const btnCloseSettings = document.getElementById('btn-close-settings');
+            const btnSaveSettings = document.getElementById('btn-save-settings');
+            const settingsModal = document.getElementById('excel-settings-modal');
+            const colContainer = document.getElementById('col-settings-container');
+            const rowContainer = document.getElementById('row-settings-container');
+
+            // 預設寬高設定值 (A~K欄, 1~23列)
+            let excelConfig = {
+                cols: { A: 0.6, B: 12, C: 12, D: 12, E: 12, F: 12, G: 12, H: 12, I: 12, J: 12, K: 12 },
+                rows: { 
+                    1: 10.5, 2: 25, 3: 5, 4: 25, 5: 25, 6: 25, 7: 25, 8: 25, 
+                    9: 15, 10: 20, 11: 15, 12: 15, 13: 5, 14: 15, 15: 15, 16: 15, 
+                    17: 5, 18: 15, 19: 15, 20: 15, 21: 5, 22: 15, 23: 15 
+                }
+            };
+            const colLetters = ['A','B','C','D','E','F','G','H','I','J','K'];
+
+            // 動態生成輸入框
+            colLetters.forEach(col => {
+                colContainer.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
+                        <label class="font-semibold text-slate-600 dark:text-slate-300 w-8">${col} 欄</label>
+                        <input type="number" step="0.1" id="config-col-${col}" class="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-bold focus:ring-1 focus:ring-primary outline-none" value="${excelConfig.cols[col]}">
+                    </div>
+                `);
+            });
+            for(let r=1; r<=23; r++){
+                rowContainer.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
+                        <label class="font-semibold text-slate-600 dark:text-slate-300 w-12">第 ${r} 列</label>
+                        <input type="number" step="0.1" id="config-row-${r}" class="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-bold focus:ring-1 focus:ring-primary outline-none" value="${excelConfig.rows[r]}">
+                    </div>
+                `);
+            }
+
+            // 開關 Modal
+            btnOpenSettings.addEventListener('click', () => {
+                settingsModal.classList.remove('hidden');
+                settingsModal.classList.add('flex');
+            });
+            btnCloseSettings.addEventListener('click', () => {
+                settingsModal.classList.add('hidden');
+                settingsModal.classList.remove('flex');
+            });
+            // 儲存設定並關閉
+            btnSaveSettings.addEventListener('click', () => {
+                colLetters.forEach(col => {
+                    excelConfig.cols[col] = parseFloat(document.getElementById(`config-col-${col}`).value) || 12;
+                });
+                for(let r=1; r<=23; r++){
+                    excelConfig.rows[r] = parseFloat(document.getElementById(`config-row-${r}`).value) || 15;
+                }
+                settingsModal.classList.add('hidden');
+                settingsModal.classList.remove('flex');
+                alert("版面寬高設定已暫存！下次轉出 Excel 將套用此設定。");
+            });
+
+            // --- 6. 匯出 ExcelJS 邏輯 ---
             const btnExport = document.getElementById('btn-export');
 
             btnExport.addEventListener('click', async () => {
@@ -491,28 +581,27 @@
                 btnExport.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> 處理中...';
 
                 try {
-                    // 👉 以測試項目名稱作為匯出的檔案名稱
                     const itemName = testItemNameInput.value.trim() || "未命名測試項目";
                     const fileName = `${itemName}.xlsx`;
 
                     const workbook = new ExcelJS.Workbook();
                     const worksheet = workbook.addWorksheet('數據紀錄', {
-                        // 👉 預設隱藏 Excel 的網格線
-                        views: [{ showGridLines: false }]
+                        views: [{ showGridLines: false }] // 隱藏格線
                     });
 
-                    for (let i = 1; i <= 10; i++) {
-                        worksheet.getColumn(i).width = 12;
-                    }
+                    // 套用自訂義的欄位寬度 (A~K 等於 1~11)
+                    colLetters.forEach((col, index) => {
+                        worksheet.getColumn(index + 1).width = excelConfig.cols[col];
+                    });
 
-                    // --- 大標題 ---
-                    worksheet.mergeCells('A1:J1');
-                    const titleCell = worksheet.getCell('A1');
-                    titleCell.value = `表單八：實物貼合精度 - ${itemName}`;
+                    // --- 大標題 (第 2 列) ---
+                    worksheet.mergeCells('B2:K2');
+                    const titleCell = worksheet.getCell('B2');
+                    titleCell.value = itemName;
                     titleCell.font = { name: '微軟正黑體', size: 16, bold: true };
                     titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-                    // --- 照片區域 (A3:E7) ---
+                    // --- 照片區域 (B4:F8) ---
                     let base64Image = previewImg.src;
                     if (base64Image && base64Image.startsWith('data:image')) {
                         let extension = base64Image.substring("data:image/".length, base64Image.indexOf(";base64"));
@@ -520,44 +609,42 @@
                             base64: base64Image.split(',')[1],
                             extension: extension
                         });
-                        worksheet.addImage(imageId, 'A3:E7');
+                        worksheet.addImage(imageId, 'B4:F8');
                     }
 
-                    // --- 規格要求區域 (F3:J7) ---
+                    // --- 規格要求區域 (G4:K8) ---
                     const oTarget = specOverlapTarget.value;
                     const oTol = specOverlapTol.value;
                     const sTol = specOffsetTol.value;
 
-                    worksheet.mergeCells('F3:J3');
-                    let specTitle = worksheet.getCell('F3');
+                    worksheet.mergeCells('G4:K4');
+                    let specTitle = worksheet.getCell('G4');
                     specTitle.value = "規格要求";
                     specTitle.font = { name: '微軟正黑體', size: 12, bold: true };
 
-                    worksheet.mergeCells('F4:J4');
-                    worksheet.getCell('F4').value = `8.1 接疊量 (Overlap): ${oTarget} ± ${oTol} mm`;
+                    worksheet.mergeCells('G5:K5');
+                    worksheet.getCell('G5').value = `8.1 接疊量 (Overlap): ${oTarget} ± ${oTol} mm`;
                     
-                    worksheet.mergeCells('F5:J5');
-                    worksheet.getCell('F5').value = `8.2 接合段差 (Offset): ± ${sTol} mm`;
+                    worksheet.mergeCells('G6:K6');
+                    worksheet.getCell('G6').value = `8.2 接合段差 (Offset): ± ${sTol} mm`;
 
-                    worksheet.mergeCells('F6:J6');
-                    worksheet.getCell('F6').value = `8.3 尖角外觀: 無下垂 / 無反摺`;
+                    worksheet.mergeCells('G7:K7');
+                    worksheet.getCell('G7').value = `8.3 尖角外觀: 無下垂 / 無反摺`;
 
-                    for(let i=3; i<=6; i++) {
-                        worksheet.getCell(`F${i}`).alignment = { vertical: 'middle', horizontal: 'left' };
-                        if(i>3) worksheet.getCell(`F${i}`).font = { name: '微軟正黑體', size: 11 };
+                    for(let i=4; i<=7; i++) {
+                        worksheet.getCell(`G${i}`).alignment = { vertical: 'middle', horizontal: 'left' };
+                        if(i>4) worksheet.getCell(`G${i}`).font = { name: '微軟正黑體', size: 11 };
                     }
 
-                    for(let i = 3; i <= 7; i++) worksheet.getRow(i).height = 25;
-
-                    // --- 數據區塊標題 ---
-                    let dataStartRow = 9;
-                    worksheet.mergeCells(`A${dataStartRow}:J${dataStartRow}`);
-                    let dataTitle = worksheet.getCell(`A${dataStartRow}`);
+                    // --- 數據區塊標題 (第 10 列) ---
+                    let dataStartRow = 10;
+                    worksheet.mergeCells(`B${dataStartRow}:K${dataStartRow}`);
+                    let dataTitle = worksheet.getCell(`B${dataStartRow}`);
                     dataTitle.value = `連續 ${targetCount} 組數據記錄 (Test No. 01-${String(targetCount).padStart(2, '0')})`;
                     dataTitle.font = { name: '微軟正黑體', size: 12, bold: true };
                     dataTitle.alignment = { vertical: 'middle', horizontal: 'left' };
 
-                    // --- 數據網格 (每 10 筆一組) ---
+                    // --- 數據網格 (每 10 筆一組，由第 11 列開始) ---
                     let currentRow = dataStartRow + 1;
                     const columnsPerRow = 10;
 
@@ -567,7 +654,7 @@
                         let r3 = currentRow + 2; // Offset
 
                         for (let j = 0; j < columnsPerRow; j++) {
-                            let colNum = j + 1;
+                            let colNum = j + 2; // 從 B 欄開始
                             let recIndex = i + j;
                             
                             let cellHead = worksheet.getRow(r1).getCell(colNum);
@@ -594,26 +681,28 @@
                                 }
                             }
                         }
-                        currentRow += 4; // 推進下一組 (包含 1 個空行)
+                        currentRow += 4; 
                     }
 
-                    // --- 👉 設定特定的列高為 5 (排版間距留白) ---
-                    // 包含標題後的第2列、以及每10組數據後的第13、17、21列...
-                    worksheet.getRow(2).height = 5;
-                    worksheet.getRow(13).height = 5;
-                    worksheet.getRow(17).height = 5;
-                    // 若有更多數據，連帶將之後的分隔列也設為 5
-                    if (targetCount > 20) worksheet.getRow(21).height = 5;
-                    if (targetCount > 30) worksheet.getRow(25).height = 5;
-
                     // --- 底部備註 ---
-                    worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
-                    let footerCell = worksheet.getCell(`A${currentRow}`);
+                    worksheet.mergeCells(`B${currentRow}:K${currentRow}`);
+                    let footerCell = worksheet.getCell(`B${currentRow}`);
                     footerCell.value = "驗證過程中不可超出標準。";
                     footerCell.font = { name: '微軟正黑體', size: 14, bold: true, color: { argb: 'FFFF0000' } };
                     footerCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-                    // 執行匯出
+                    // 👉 套用自訂義的列位高度 (1~23列)
+                    // 必須放在最後執行，確保不被內容預設撐開的高度蓋掉
+                    for (let r = 1; r <= 23; r++) {
+                        worksheet.getRow(r).height = excelConfig.rows[r];
+                    }
+                    // 確保動態產生的後續間隔列也有正確高度 (如果超過30筆資料)
+                    if(targetCount > 30) {
+                        for(let r = 25; r <= currentRow; r+=4) {
+                             worksheet.getRow(r).height = 5;
+                        }
+                    }
+
                     const buffer = await workbook.xlsx.writeBuffer();
                     saveAs(new Blob([buffer]), fileName);
                 
@@ -625,7 +714,6 @@
                 }
             });
 
-            // 網頁載入時初始化
             updateStepAttributes();
             updateProgressDisplay();
             checkAutoJudge(); 
