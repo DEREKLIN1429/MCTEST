@@ -50,7 +50,6 @@
             -webkit-appearance: none; 
             margin: 0; 
         }
-        /* 樣式選擇器的選取狀態 */
         .style-option.selected {
             border-color: #137fec;
             background-color: rgba(19, 127, 236, 0.1);
@@ -302,7 +301,7 @@
                     <div class="flex-1 space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm h-64 overflow-y-auto">
                         <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
                             <h4 class="font-bold text-primary text-sm flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm">view_column</span> 欄位寬度 (A~K)
+                                <span class="material-symbols-outlined text-sm">view_column</span> 欄位寬度與框線
                             </h4>
                         </div>
                         <div id="col-settings-container" class="space-y-2"></div>
@@ -310,7 +309,7 @@
                     <div class="flex-1 space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm h-64 overflow-y-auto">
                         <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
                             <h4 class="font-bold text-primary text-sm flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm">table_rows</span> 列位高度 (1~23)
+                                <span class="material-symbols-outlined text-sm">table_rows</span> 列位高度與框線
                             </h4>
                         </div>
                         <div id="row-settings-container" class="space-y-2"></div>
@@ -320,7 +319,7 @@
 
             <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                 <button type="button" id="btn-save-settings" class="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">
-                    套用並儲存設定
+                    關閉面板 (設定已自動暫存)
                 </button>
             </div>
         </div>
@@ -616,7 +615,7 @@
                 }
             });
 
-            // --- 5. Excel 版面與框線設定 (Modal 邏輯) ---
+            // --- 5. Excel 版面與自訂單一框線設定 ---
             const btnOpenSettings = document.getElementById('btn-open-settings');
             const btnCloseSettings = document.getElementById('btn-close-settings');
             const btnSaveSettings = document.getElementById('btn-save-settings');
@@ -624,12 +623,10 @@
             const colContainer = document.getElementById('col-settings-container');
             const rowContainer = document.getElementById('row-settings-container');
 
-            // 框線 UI 控制
             const styleOptions = document.querySelectorAll('.style-option');
             const presetBtns = document.querySelectorAll('.preset-btn');
             const checkboxGridlines = document.getElementById('config-gridlines');
 
-            // 👉 更新：將第 13, 17 列預設為 15；第 14, 18 列預設為 5
             let excelConfig = {
                 cols: { A: 0.6, B: 12, C: 12, D: 12, E: 12, F: 12, G: 12, H: 12, I: 12, J: 12, K: 12 },
                 rows: { 
@@ -637,31 +634,73 @@
                     9: 15, 10: 20, 11: 15, 12: 15, 13: 15, 14: 5, 15: 15, 16: 15, 
                     17: 15, 18: 5, 19: 15, 20: 15, 21: 15, 22: 5, 23: 15 
                 },
-                borderStyle: 'thin', // 預設線條樣式
-                borderPreset: 'all', // 預設全部框線
-                showGridLines: false // 預設不顯示格線
+                borderStyle: 'thin', 
+                borderPreset: 'all', 
+                showGridLines: false,
+                // 儲存單列或單欄的自訂框線設定
+                customBorders: { cols: {}, rows: {} } 
             };
             const colLetters = ['A','B','C','D','E','F','G','H','I','J','K'];
 
-            // 生成寬高設定 Input
-            colLetters.forEach(col => {
-                colContainer.insertAdjacentHTML('beforeend', `
-                    <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
-                        <label class="font-semibold text-slate-600 dark:text-slate-300 w-8">${col} 欄</label>
-                        <input type="number" step="0.1" id="config-col-${col}" class="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-bold focus:ring-1 focus:ring-primary outline-none" value="${excelConfig.cols[col]}">
-                    </div>
-                `);
-            });
-            for(let r=1; r<=23; r++){
-                rowContainer.insertAdjacentHTML('beforeend', `
-                    <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
-                        <label class="font-semibold text-slate-600 dark:text-slate-300 w-12">第 ${r} 列</label>
-                        <input type="number" step="0.1" id="config-row-${r}" class="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-bold focus:ring-1 focus:ring-primary outline-none" value="${excelConfig.rows[r]}">
-                    </div>
-                `);
+            // 動態生成帶有「單一框線設定按鈕」的輸入區塊
+            function renderConfigInputs() {
+                colContainer.innerHTML = '';
+                rowContainer.innerHTML = '';
+                
+                colLetters.forEach(col => {
+                    let hasCustom = !!excelConfig.customBorders.cols[col];
+                    let btnClass = hasCustom ? 'bg-primary text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                    colContainer.insertAdjacentHTML('beforeend', `
+                        <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
+                            <label class="font-semibold text-slate-600 dark:text-slate-300 w-8">${col} 欄</label>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="btn-custom-border p-1 rounded transition-colors ${btnClass}" data-type="cols" data-target="${col}" title="點擊套用左側框線樣式至此欄">
+                                    <span class="material-symbols-outlined text-[16px] leading-none">border_color</span>
+                                </button>
+                                <input type="number" step="0.1" id="config-col-${col}" class="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-bold focus:ring-1 focus:ring-primary outline-none" value="${excelConfig.cols[col]}">
+                            </div>
+                        </div>
+                    `);
+                });
+                for(let r=1; r<=23; r++){
+                    let hasCustom = !!excelConfig.customBorders.rows[r];
+                    let btnClass = hasCustom ? 'bg-primary text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                    rowContainer.insertAdjacentHTML('beforeend', `
+                        <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
+                            <label class="font-semibold text-slate-600 dark:text-slate-300 w-12">第 ${r} 列</label>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="btn-custom-border p-1 rounded transition-colors ${btnClass}" data-type="rows" data-target="${r}" title="點擊套用左側框線樣式至此列">
+                                    <span class="material-symbols-outlined text-[16px] leading-none">border_color</span>
+                                </button>
+                                <input type="number" step="0.1" id="config-row-${r}" class="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-bold focus:ring-1 focus:ring-primary outline-none" value="${excelConfig.rows[r]}">
+                            </div>
+                        </div>
+                    `);
+                }
             }
 
-            // 線條樣式點擊邏輯
+            // 事件代理：處理點擊設定單一框線
+            const handleCustomBorderClick = (e) => {
+                const btn = e.target.closest('.btn-custom-border');
+                if (!btn) return;
+                
+                const type = btn.dataset.type; // 'cols' or 'rows'
+                const target = btn.dataset.target; // 'A' or '1'
+                
+                if (excelConfig.customBorders[type][target]) {
+                    delete excelConfig.customBorders[type][target];
+                    btn.className = 'btn-custom-border p-1 rounded transition-colors bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                } else {
+                    excelConfig.customBorders[type][target] = {
+                        style: excelConfig.borderStyle,
+                        preset: excelConfig.borderPreset
+                    };
+                    btn.className = 'btn-custom-border p-1 rounded transition-colors bg-primary text-white';
+                }
+            };
+            colContainer.addEventListener('click', handleCustomBorderClick);
+            rowContainer.addEventListener('click', handleCustomBorderClick);
+
             styleOptions.forEach(opt => {
                 opt.addEventListener('click', () => {
                     styleOptions.forEach(o => o.classList.remove('selected'));
@@ -670,7 +709,6 @@
                 });
             });
 
-            // 格式預設點擊邏輯
             presetBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     presetBtns.forEach(b => b.classList.remove('selected'));
@@ -680,6 +718,8 @@
             });
 
             btnOpenSettings.addEventListener('click', () => {
+                renderConfigInputs(); // 開啟時重新渲染輸入框狀態
+                checkboxGridlines.checked = excelConfig.showGridLines;
                 settingsModal.classList.remove('hidden');
                 settingsModal.classList.add('flex');
             });
@@ -687,21 +727,16 @@
                 settingsModal.classList.add('hidden');
                 settingsModal.classList.remove('flex');
             });
-
             btnSaveSettings.addEventListener('click', () => {
-                // 儲存欄寬列高
                 colLetters.forEach(col => {
                     excelConfig.cols[col] = parseFloat(document.getElementById(`config-col-${col}`).value) || 12;
                 });
                 for(let r=1; r<=23; r++){
                     excelConfig.rows[r] = parseFloat(document.getElementById(`config-row-${r}`).value) || 15;
                 }
-                // 儲存格線開關
                 excelConfig.showGridLines = checkboxGridlines.checked;
-
                 settingsModal.classList.add('hidden');
                 settingsModal.classList.remove('flex');
-                alert("版面與框線設定已暫存！");
             });
 
             // --- 6. 匯出 Excel ---
@@ -725,7 +760,6 @@
 
                     const workbook = new ExcelJS.Workbook();
                     const worksheet = workbook.addWorksheet('數據紀錄', {
-                        // 👉 帶入介面中設定的格線狀態
                         views: [{ showGridLines: excelConfig.showGridLines }] 
                     });
 
@@ -741,7 +775,7 @@
                     titleCell.font = { name: '微軟正黑體', size: 16, bold: true };
                     titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-                    worksheet.getRow(3).height = excelConfig.rows[3];
+                    worksheet.getRow(3).height = excelConfig.rows[3] || 5;
 
                     // --- 照片區域 ---
                     let base64Image = previewImg.src;
@@ -764,23 +798,22 @@
                     specTitle.value = "規格要求";
                     specTitle.font = { name: '微軟正黑體', size: 12, bold: true };
 
+                    // 👉 更新：套用新要求的規格標題格式 1. , 2. , 3. 
                     worksheet.mergeCells('G5:K5');
-                    worksheet.getCell('G5').value = `8.1 ${t1Name}: ${oTarget} ± ${oTol} mm`;
+                    worksheet.getCell('G5').value = `1. ${t1Name} : ${oTarget} ± ${oTol} mm`;
                     
                     worksheet.mergeCells('G6:K6');
-                    worksheet.getCell('G6').value = `8.2 ${t2Name}: ± ${sTol} mm`;
+                    worksheet.getCell('G6').value = `2. ${t2Name} : ± ${sTol} mm`;
 
                     worksheet.mergeCells('G7:K7');
-                    worksheet.getCell('G7').value = `8.3 尖角外觀: 無下垂 / 無反摺`;
+                    worksheet.getCell('G7').value = `3. 標準範圍 : ${specRangeInput.value}`;
 
                     for(let i=4; i<=7; i++) {
                         worksheet.getCell(`G${i}`).alignment = { vertical: 'middle', horizontal: 'left' };
                         if(i>4) worksheet.getCell(`G${i}`).font = { name: '微軟正黑體', size: 11 };
+                        worksheet.getRow(i).height = excelConfig.rows[i] || 25;
                     }
-
-                    for(let i = 4; i <= 8; i++) {
-                        worksheet.getRow(i).height = excelConfig.rows[i];
-                    }
+                    worksheet.getRow(8).height = excelConfig.rows[8] || 25;
 
                     // --- 數據區塊 ---
                     let dataStartRow = 10;
@@ -792,10 +825,6 @@
 
                     let currentRow = dataStartRow + 1;
                     const columnsPerRow = 10;
-
-                    // 👉 取得使用者選擇的框線樣式與套用規則
-                    const bStyle = excelConfig.borderStyle; 
-                    const bPreset = excelConfig.borderPreset; 
 
                     for (let i = 0; i < targetCount; i += columnsPerRow) {
                         let r1 = currentRow;     
@@ -810,34 +839,11 @@
                             let cellOver = worksheet.getRow(r2).getCell(colNum);
                             let cellOff = worksheet.getRow(r3).getCell(colNum);
 
-                            // 👉 依據框線規則動態畫線
-                            let isFirstRow = true;
-                            let isLastRow = true;
-                            let isLeftCol = (j === 0);
-                            let isRightCol = (j === columnsPerRow - 1);
-
-                            [cellHead, cellOver, cellOff].forEach((c, cIdx) => {
+                            // 預設基本網格
+                            [cellHead, cellOver, cellOff].forEach(c => {
+                                c.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                                 c.alignment = { vertical: 'middle', horizontal: 'center' };
                                 c.font = { name: '微軟正黑體', size: 11 };
-                                
-                                let borderObj = {};
-                                let isTopEdge = (cIdx === 0);
-                                let isBottomEdge = (cIdx === 2);
-
-                                if (bPreset === 'all') {
-                                    borderObj = { top: {style:bStyle}, left: {style:bStyle}, bottom: {style:bStyle}, right: {style:bStyle} };
-                                } else if (bPreset === 'outline') {
-                                    if (isTopEdge) borderObj.top = {style:bStyle};
-                                    if (isBottomEdge) borderObj.bottom = {style:bStyle};
-                                    if (isLeftCol) borderObj.left = {style:bStyle};
-                                    if (isRightCol) borderObj.right = {style:bStyle};
-                                } else if (bPreset === 'inside') {
-                                    if (!isTopEdge) borderObj.top = {style:bStyle};
-                                    if (!isBottomEdge) borderObj.bottom = {style:bStyle};
-                                    if (!isLeftCol) borderObj.left = {style:bStyle};
-                                    if (!isRightCol) borderObj.right = {style:bStyle};
-                                }
-                                c.border = borderObj;
                             });
 
                             if (recIndex < targetCount) {
@@ -865,13 +871,68 @@
                     footerCell.value = "驗證過程中不可超出標準。";
                     footerCell.font = { name: '微軟正黑體', size: 14, bold: true, color: { argb: 'FFFF0000' } };
                     footerCell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    let maxRowInSheet = currentRow;
 
-                    // 套用自訂列高
+                    // --- 👉 覆蓋套用：單一自訂欄位框線 ---
+                    colLetters.forEach((col, idx) => {
+                        let config = excelConfig.customBorders.cols[col];
+                        if (config) {
+                            let C = idx + 2; // 對應到 B~K
+                            for (let R = 1; R <= maxRowInSheet; R++) {
+                                let c = worksheet.getRow(R).getCell(C);
+                                let b = c.border ? JSON.parse(JSON.stringify(c.border)) : {};
+                                
+                                if (config.preset === 'all') {
+                                    b.top = {style: config.style}; b.bottom = {style: config.style};
+                                    b.left = {style: config.style}; b.right = {style: config.style};
+                                } else if (config.preset === 'outline') {
+                                    if (R === 1) b.top = {style: config.style};
+                                    if (R === maxRowInSheet) b.bottom = {style: config.style};
+                                    b.left = {style: config.style}; b.right = {style: config.style};
+                                } else if (config.preset === 'inside') {
+                                    if (R > 1) b.top = {style: config.style};
+                                    if (R < maxRowInSheet) b.bottom = {style: config.style};
+                                } else if (config.preset === 'none') {
+                                    b = {};
+                                }
+                                c.border = b;
+                            }
+                        }
+                    });
+
+                    // --- 👉 覆蓋套用：單一自訂列位框線 (會蓋過欄位設定) ---
+                    for (let r = 1; r <= 23; r++) {
+                        let config = excelConfig.customBorders.rows[r];
+                        if (config) {
+                            let R = r;
+                            for (let C = 2; C <= 11; C++) {
+                                let c = worksheet.getRow(R).getCell(C);
+                                let b = c.border ? JSON.parse(JSON.stringify(c.border)) : {};
+                                
+                                if (config.preset === 'all') {
+                                    b.top = {style: config.style}; b.bottom = {style: config.style};
+                                    b.left = {style: config.style}; b.right = {style: config.style};
+                                } else if (config.preset === 'outline') {
+                                    b.top = {style: config.style}; b.bottom = {style: config.style};
+                                    if (C === 2) b.left = {style: config.style};
+                                    if (C === 11) b.right = {style: config.style};
+                                } else if (config.preset === 'inside') {
+                                    if (C > 2) b.left = {style: config.style};
+                                    if (C < 11) b.right = {style: config.style};
+                                } else if (config.preset === 'none') {
+                                    b = {};
+                                }
+                                c.border = b;
+                            }
+                        }
+                    }
+
+                    // --- 確保套用正確自訂列高 ---
                     for (let r = 1; r <= 23; r++) {
                         if(excelConfig.rows[r]) worksheet.getRow(r).height = excelConfig.rows[r];
                     }
                     if(targetCount > 30) {
-                        for(let r = 25; r <= currentRow; r+=4) worksheet.getRow(r).height = excelConfig.rows[14] || 5;
+                        for(let r = 25; r <= maxRowInSheet; r+=4) worksheet.getRow(r).height = excelConfig.rows[14] || 5;
                     }
 
                     const buffer = await workbook.xlsx.writeBuffer();
@@ -885,6 +946,7 @@
                 }
             });
 
+            renderConfigInputs();
             updateStepAttributes();
             updateProgressDisplay();
             checkAutoJudge(); 
