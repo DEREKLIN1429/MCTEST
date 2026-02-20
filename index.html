@@ -94,10 +94,25 @@
                             <button type="button" id="btn-decrement" class="w-8 h-8 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white transition-colors">
                                 <span class="material-symbols-outlined text-sm">remove</span>
                             </button>
-                            <span id="sample-count" class="w-8 text-center font-bold">30</span>
+                            <input id="sample-count" type="number" value="30" class="w-12 text-center font-bold bg-transparent border-b border-dashed border-slate-400 focus:outline-none focus:border-primary">
                             <button type="button" id="btn-increment" class="w-8 h-8 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white transition-colors">
                                 <span class="material-symbols-outlined text-sm">add</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium">小數位數 (Decimal Places)</p>
+                            <p class="text-xs text-slate-500">Data Precision Settings</p>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <select id="decimal-places" class="bg-transparent font-bold text-center outline-none cursor-pointer w-16 px-2 py-1 text-sm dark:text-white">
+                                <option value="0" class="text-black">0 位</option>
+                                <option value="1" selected class="text-black">1 位</option>
+                                <option value="2" class="text-black">2 位</option>
+                                <option value="3" class="text-black">3 位</option>
+                            </select>
                         </div>
                     </div>
 
@@ -214,19 +229,40 @@
         document.addEventListener('DOMContentLoaded', () => {
             let recordsData = [];
 
-            // --- 1. 樣本數增減邏輯 ---
+            // --- 0. 測試項目名稱 localStorage 暫存邏輯 ---
+            const testItemNameInput = document.getElementById('test-item-name');
+            // 讀取先前暫存的名字
+            if(localStorage.getItem('testItemName')) {
+                testItemNameInput.value = localStorage.getItem('testItemName');
+            }
+            // 使用者輸入時即時存入 localStorage
+            testItemNameInput.addEventListener('input', () => {
+                localStorage.setItem('testItemName', testItemNameInput.value);
+            });
+
+
+            // --- 1. 樣本數增減與手動輸入邏輯 ---
             const btnDecrement = document.getElementById('btn-decrement');
             const btnIncrement = document.getElementById('btn-increment');
-            const sampleCountEl = document.getElementById('sample-count');
+            const sampleCountInput = document.getElementById('sample-count');
             const progressText = document.getElementById('progress-text');
             
-            let targetCount = 30; 
+            let targetCount = parseInt(sampleCountInput.value) || 30; 
             let currentEntry = 1; 
 
             function updateProgressDisplay() {
-                sampleCountEl.innerText = targetCount;
+                sampleCountInput.value = targetCount; // 更新 input 顯示
                 progressText.innerText = `進度: ${currentEntry - 1} / ${targetCount}`;
             }
+
+            // 監聽手動輸入
+            sampleCountInput.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val) && val >= 1) {
+                    targetCount = val;
+                    updateProgressDisplay();
+                }
+            });
 
             btnDecrement.addEventListener('click', () => {
                 if (targetCount > 1) { 
@@ -239,6 +275,7 @@
                 targetCount++;
                 updateProgressDisplay();
             });
+
 
             // --- 2. 相機拍照與預覽邏輯 ---
             const uploadZone = document.getElementById('upload-zone');
@@ -269,12 +306,18 @@
                 }
             });
 
-            // --- 3. 自動判定邏輯與連動標準範圍 ---
+
+            // --- 3. 小數位數設定與自動判定邏輯 ---
+            const decimalPlacesSelect = document.getElementById('decimal-places');
+            function getDecimalPlaces() {
+                return parseInt(decimalPlacesSelect.value) || 0;
+            }
+
             const specOverlapTarget = document.getElementById('spec-overlap-target');
             const specOverlapTol = document.getElementById('spec-overlap-tol');
             const specOffsetTarget = document.getElementById('spec-offset-target');
             const specOffsetTol = document.getElementById('spec-offset-tol');
-            const specRangeInput = document.getElementById('spec-range'); // 取得標準範圍輸入框
+            const specRangeInput = document.getElementById('spec-range'); 
             
             const inputOverlap = document.getElementById('input-overlap');
             const inputOffset = document.getElementById('input-offset');
@@ -282,21 +325,24 @@
             const btnConfirm = document.getElementById('btn-confirm');
             
             let currentJudgeStatus = 'OK'; 
+            let currentOverlapOk = true; // 紀錄 Overlap 單獨是否合格
+            let currentOffsetOk = true;  // 紀錄 Offset 單獨是否合格
 
             function checkAutoJudge() {
-                // 讀取規格設定文字
-                const oTargetStr = specOverlapTarget.value || "0";
-                const oTolStr = specOverlapTol.value || "0";
-                
-                // 👉 核心邏輯：動態組合並更新「標準範圍」欄位
-                specRangeInput.value = `${oTargetStr} ± ${oTolStr}`;
+                const dec = getDecimalPlaces();
 
-                // 將文字轉換為數字進行判定運算
-                const oTarget = parseFloat(oTargetStr);
-                const oTol = parseFloat(oTolStr);
+                // 取得規格數值
+                const oTarget = parseFloat(specOverlapTarget.value) || 0;
+                const oTol = parseFloat(specOverlapTol.value) || 0;
                 const sTarget = parseFloat(specOffsetTarget.value) || 0;
                 const sTol = parseFloat(specOffsetTol.value) || 0;
 
+                // 👉 核心邏輯：計算標準範圍 ( Min ~ Max ) 並套用小數位數
+                const minRange = (oTarget - oTol).toFixed(dec);
+                const maxRange = (oTarget + oTol).toFixed(dec);
+                specRangeInput.value = `${minRange} ~ ${maxRange}`;
+
+                // 取得輸入數值
                 const oVal = parseFloat(inputOverlap.value);
                 const sVal = parseFloat(inputOffset.value);
 
@@ -307,10 +353,11 @@
                     return;
                 }
 
-                const isOverlapOk = Math.abs(oVal - oTarget) <= oTol;
-                const isOffsetOk = Math.abs(sVal - sTarget) <= sTol;
+                // 判斷是否合格
+                currentOverlapOk = Math.abs(oVal - oTarget) <= oTol;
+                currentOffsetOk = Math.abs(sVal - sTarget) <= sTol;
 
-                if (isOverlapOk && isOffsetOk) {
+                if (currentOverlapOk && currentOffsetOk) {
                     autoJudgeResult.className = "flex-1 py-3 text-sm font-bold rounded-xl border-2 border-green-500 bg-green-500/10 text-green-500 text-center transition-all flex items-center justify-center gap-1";
                     autoJudgeResult.innerHTML = '<span class="material-symbols-outlined text-base">check_circle</span>OK (合格)';
                     currentJudgeStatus = 'OK';
@@ -321,13 +368,15 @@
                 }
             }
 
-            // 綁定所有相關的輸入框，只要任何數字變更，就會觸發 checkAutoJudge()
+            // 綁定輸入事件與小數位數變更事件
+            decimalPlacesSelect.addEventListener('change', checkAutoJudge);
             inputOverlap.addEventListener('input', checkAutoJudge);
             inputOffset.addEventListener('input', checkAutoJudge);
             specOverlapTarget.addEventListener('input', checkAutoJudge);
             specOverlapTol.addEventListener('input', checkAutoJudge);
             specOffsetTarget.addEventListener('input', checkAutoJudge);
             specOffsetTol.addEventListener('input', checkAutoJudge);
+
 
             // --- 4. 數據記錄與確認按鈕邏輯 ---
             const activeEntryNo = document.getElementById('active-entry-no');
@@ -339,16 +388,24 @@
                     return;
                 }
 
-                const overlapVal = inputOverlap.value;
-                const offsetVal = inputOffset.value;
-                const specRangeVal = specRangeInput.value; // 抓取最新的標準範圍
+                const dec = getDecimalPlaces();
+                
+                // 套用小數位數格式化
+                const overlapValStr = parseFloat(inputOverlap.value).toFixed(dec);
+                const offsetValStr = parseFloat(inputOffset.value).toFixed(dec);
+                const specRangeVal = specRangeInput.value; 
+
                 const statusColor = currentJudgeStatus === 'OK' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
 
-                // 儲存資料到陣列 (包含標準範圍)
+                // 👉 如果單一數值不合格，套用紅字樣式
+                const overlapTextClass = currentOverlapOk ? '' : 'text-red-500 font-bold';
+                const offsetTextClass = currentOffsetOk ? '' : 'text-red-500 font-bold';
+
+                // 將格式化後的資料儲存到陣列中
                 recordsData.push({
                     "編號": currentEntry,
-                    "接疊量 (Overlap)": overlapVal,
-                    "接合段差 (Offset)": offsetVal,
+                    "接疊量 (Overlap)": overlapValStr,
+                    "接合段差 (Offset)": offsetValStr,
                     "標準範圍": specRangeVal,
                     "外觀判定": currentJudgeStatus,
                     "紀錄時間": new Date().toLocaleString()
@@ -359,8 +416,8 @@
                         <div class="flex items-center gap-4">
                             <span class="font-bold">#${String(currentEntry).padStart(2, '0')}</span>
                             <div class="flex gap-3">
-                                <span>O: ${overlapVal}</span>
-                                <span>S: ${offsetVal}</span>
+                                <span class="${overlapTextClass}">O: ${overlapValStr}</span>
+                                <span class="${offsetTextClass}">S: ${offsetValStr}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -378,9 +435,9 @@
 
             btnConfirm.addEventListener('click', logData);
 
+
             // --- 5. 匯出 EXCEL 邏輯 ---
             const btnExport = document.getElementById('btn-export');
-            const testItemNameInput = document.getElementById('test-item-name');
 
             btnExport.addEventListener('click', () => {
                 if (recordsData.length === 0) {
@@ -396,7 +453,7 @@
                 XLSX.writeFile(workbook, fileName);
             });
 
-            // 初始化：網頁載入時觸發一次，讓標準範圍顯示預設值 (4 ± 1)
+            // 初始化
             updateProgressDisplay();
             checkAutoJudge(); 
         });
