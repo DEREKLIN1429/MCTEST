@@ -143,7 +143,7 @@
                     </div>
                     <div class="bg-white dark:bg-slate-900 p-2 rounded-lg text-center shadow-sm flex flex-col justify-center border border-slate-100 dark:border-slate-800">
                         <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">標準範圍</p>
-                        <input id="spec-range" type="text" value="合格標準" readonly class="w-full p-0 text-center border-none bg-transparent focus:ring-0 text-xs font-bold text-primary outline-none cursor-default">
+                        <input id="spec-range" type="text" readonly class="w-full p-0 text-center border-none bg-transparent focus:ring-0 text-sm font-bold text-primary outline-none cursor-default">
                     </div>
                 </div>
             </div>
@@ -269,11 +269,12 @@
                 }
             });
 
-            // --- 3. 自動判定邏輯 ---
+            // --- 3. 自動判定邏輯與連動標準範圍 ---
             const specOverlapTarget = document.getElementById('spec-overlap-target');
             const specOverlapTol = document.getElementById('spec-overlap-tol');
             const specOffsetTarget = document.getElementById('spec-offset-target');
             const specOffsetTol = document.getElementById('spec-offset-tol');
+            const specRangeInput = document.getElementById('spec-range'); // 取得標準範圍輸入框
             
             const inputOverlap = document.getElementById('input-overlap');
             const inputOffset = document.getElementById('input-offset');
@@ -283,8 +284,16 @@
             let currentJudgeStatus = 'OK'; 
 
             function checkAutoJudge() {
-                const oTarget = parseFloat(specOverlapTarget.value) || 0;
-                const oTol = parseFloat(specOverlapTol.value) || 0;
+                // 讀取規格設定文字
+                const oTargetStr = specOverlapTarget.value || "0";
+                const oTolStr = specOverlapTol.value || "0";
+                
+                // 👉 核心邏輯：動態組合並更新「標準範圍」欄位
+                specRangeInput.value = `${oTargetStr} ± ${oTolStr}`;
+
+                // 將文字轉換為數字進行判定運算
+                const oTarget = parseFloat(oTargetStr);
+                const oTol = parseFloat(oTolStr);
                 const sTarget = parseFloat(specOffsetTarget.value) || 0;
                 const sTol = parseFloat(specOffsetTol.value) || 0;
 
@@ -312,6 +321,7 @@
                 }
             }
 
+            // 綁定所有相關的輸入框，只要任何數字變更，就會觸發 checkAutoJudge()
             inputOverlap.addEventListener('input', checkAutoJudge);
             inputOffset.addEventListener('input', checkAutoJudge);
             specOverlapTarget.addEventListener('input', checkAutoJudge);
@@ -322,7 +332,6 @@
             // --- 4. 數據記錄與確認按鈕邏輯 ---
             const activeEntryNo = document.getElementById('active-entry-no');
             const logContainer = document.getElementById('log-container');
-            const specRangeInput = document.getElementById('spec-range'); // 取得標準範圍輸入框
 
             function logData() {
                 if (currentJudgeStatus === 'PENDING') {
@@ -332,10 +341,10 @@
 
                 const overlapVal = inputOverlap.value;
                 const offsetVal = inputOffset.value;
-                const specRangeVal = specRangeInput.value; // 抓取標準範圍內容
+                const specRangeVal = specRangeInput.value; // 抓取最新的標準範圍
                 const statusColor = currentJudgeStatus === 'OK' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
 
-                // 將資料儲存到陣列中 (加入了標準範圍欄位)
+                // 儲存資料到陣列 (包含標準範圍)
                 recordsData.push({
                     "編號": currentEntry,
                     "接疊量 (Overlap)": overlapVal,
@@ -387,7 +396,7 @@
                 XLSX.writeFile(workbook, fileName);
             });
 
-            // 初始化
+            // 初始化：網頁載入時觸發一次，讓標準範圍顯示預設值 (4 ± 1)
             updateProgressDisplay();
             checkAutoJudge(); 
         });
