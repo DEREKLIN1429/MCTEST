@@ -50,6 +50,16 @@
             -webkit-appearance: none; 
             margin: 0; 
         }
+        /* 樣式選擇器的選取狀態 */
+        .style-option.selected {
+            border-color: #137fec;
+            background-color: rgba(19, 127, 236, 0.1);
+        }
+        .preset-btn.selected {
+            border-color: #137fec;
+            background-color: rgba(19, 127, 236, 0.1);
+            color: #137fec;
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col relative">
@@ -107,7 +117,7 @@
                             <p class="text-xs text-slate-500">Data Precision Settings</p>
                         </div>
                         <div class="flex items-center gap-3 bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <select id="decimal-places" class="bg-transparent font-bold text-center outline-none cursor-pointer w-16 px-2 py-1 text-sm dark:text-white">
+                            <select id="decimal-places" class="bg-transparent font-bold text-center outline-none cursor-pointer w-24 px-2 py-1 text-sm dark:text-white">
                                 <option value="0" class="text-black">0 位</option>
                                 <option value="1" selected class="text-black">1 位</option>
                                 <option value="2" class="text-black">2 位</option>
@@ -135,13 +145,19 @@
 
         <section class="px-4 pb-4">
             <div class="bg-primary/5 dark:bg-primary/10 p-4 rounded-xl border border-primary/20">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="material-symbols-outlined text-primary text-xl">rule</span>
-                    <h2 class="font-bold text-primary">規格要求 (Spec Requirements)</h2>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 border-b border-primary/20 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-xl">rule</span>
+                        <h2 class="font-bold text-primary whitespace-nowrap">規格要求</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input id="title-overlap" type="text" value="測試一" class="w-24 px-2 py-1 text-xs text-center font-bold text-primary bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" title="自訂項目一名稱">
+                        <input id="title-offset" type="text" value="測試二" class="w-24 px-2 py-1 text-xs text-center font-bold text-primary bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm" title="自訂項目二名稱">
+                    </div>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
                     <div class="bg-white dark:bg-slate-900 p-2 rounded-lg text-center shadow-sm border border-slate-100 dark:border-slate-800">
-                        <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">接疊量 (Overlap)</p>
+                        <p id="label-spec-overlap" class="text-[10px] uppercase font-bold text-slate-500 mb-1">測試一</p>
                         <div class="flex items-center justify-center text-sm font-bold text-slate-700 dark:text-slate-200">
                             <input id="spec-overlap-target" type="number" value="4" class="w-10 p-0 text-center border-b border-dashed border-slate-400 bg-transparent focus:ring-0 focus:border-primary text-sm font-bold outline-none">
                             <span class="mx-1 text-xs">±</span>
@@ -149,7 +165,7 @@
                         </div>
                     </div>
                     <div class="bg-white dark:bg-slate-900 p-2 rounded-lg text-center shadow-sm border border-slate-100 dark:border-slate-800">
-                        <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">接合段差 (Offset)</p>
+                        <p id="label-spec-offset" class="text-[10px] uppercase font-bold text-slate-500 mb-1">測試二</p>
                         <div class="flex items-center justify-center text-sm font-bold text-slate-700 dark:text-slate-200">
                             <input id="spec-offset-target" type="number" value="0" class="w-10 p-0 text-center border-b border-dashed border-slate-400 bg-transparent focus:ring-0 focus:border-primary text-sm font-bold outline-none">
                             <span class="mx-1 text-xs">±</span>
@@ -181,11 +197,11 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-500">接疊量 (Overlap)</label>
+                        <label id="label-input-overlap" class="text-xs font-semibold text-slate-500 truncate block">測試一</label>
                         <input id="input-overlap" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-center font-bold text-lg" placeholder="輸入數值" type="number" value="4.0"/>
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-500">接合段差 (Offset)</label>
+                        <label id="label-input-offset" class="text-xs font-semibold text-slate-500 truncate block">測試二</label>
                         <input id="input-offset" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-center font-bold text-lg" placeholder="輸入數值" type="number" value="0.0"/>
                     </div>
                 </div>
@@ -221,38 +237,87 @@
     </nav>
     
     <div id="excel-settings-modal" class="fixed inset-0 z-[100] bg-black/60 hidden items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in border border-slate-200 dark:border-slate-800">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in border border-slate-200 dark:border-slate-800">
             <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary">tune</span>
-                    <h3 class="font-bold text-lg">Excel 寬高設定</h3>
+                    <h3 class="font-bold text-lg">Excel 版面與框線設定</h3>
                 </div>
                 <button type="button" id="btn-close-settings" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div class="p-4 overflow-y-auto flex gap-6 custom-scrollbar">
-                <div class="flex-1 space-y-3">
-                    <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <h4 class="font-bold text-primary text-sm flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm">view_column</span> 欄位寬度
-                        </h4>
-                        <p class="text-[10px] text-slate-500">A ~ K 欄</p>
-                    </div>
-                    <div id="col-settings-container" class="space-y-2">
+            
+            <div class="p-4 overflow-y-auto flex flex-col gap-6 custom-scrollbar bg-slate-50/30">
+                <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 space-y-3">
+                        <h4 class="font-bold text-slate-700 dark:text-slate-300 text-sm border-b pb-1">線條樣式 (Line Style)</h4>
+                        <div class="grid grid-cols-2 gap-2" id="line-style-selector">
+                            <div data-style="thin" class="style-option selected border-2 border-transparent hover:border-slate-300 p-3 rounded cursor-pointer bg-slate-50 flex items-center justify-center transition-all">
+                                <div class="w-full border-b border-black"></div>
+                            </div>
+                            <div data-style="medium" class="style-option border-2 border-transparent hover:border-slate-300 p-3 rounded cursor-pointer bg-slate-50 flex items-center justify-center transition-all">
+                                <div class="w-full border-b-2 border-black"></div>
+                            </div>
+                            <div data-style="thick" class="style-option border-2 border-transparent hover:border-slate-300 p-3 rounded cursor-pointer bg-slate-50 flex items-center justify-center transition-all">
+                                <div class="w-full border-b-4 border-black"></div>
+                            </div>
+                            <div data-style="dashed" class="style-option border-2 border-transparent hover:border-slate-300 p-3 rounded cursor-pointer bg-slate-50 flex items-center justify-center transition-all">
+                                <div class="w-full border-b-2 border-dashed border-black"></div>
+                            </div>
                         </div>
+                    </div>
+                    <div class="flex-1 space-y-3 flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-slate-700 dark:text-slate-300 text-sm border-b pb-1 mb-3">格式預設 (Presets)</h4>
+                            <div class="grid grid-cols-4 gap-2" id="border-preset-selector">
+                                <button type="button" data-preset="none" class="preset-btn border border-slate-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-slate-50 transition-all text-slate-600">
+                                    <span class="material-symbols-outlined">border_clear</span>
+                                    <span class="text-[10px] font-bold">無 (N)</span>
+                                </button>
+                                <button type="button" data-preset="outline" class="preset-btn border border-slate-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-slate-50 transition-all text-slate-600">
+                                    <span class="material-symbols-outlined">border_outer</span>
+                                    <span class="text-[10px] font-bold">外框 (O)</span>
+                                </button>
+                                <button type="button" data-preset="inside" class="preset-btn border border-slate-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-slate-50 transition-all text-slate-600">
+                                    <span class="material-symbols-outlined">border_inner</span>
+                                    <span class="text-[10px] font-bold">內線 (I)</span>
+                                </button>
+                                <button type="button" data-preset="all" class="preset-btn selected border border-slate-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-slate-50 transition-all text-slate-600">
+                                    <span class="material-symbols-outlined">border_all</span>
+                                    <span class="text-[10px] font-bold">全部</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <label class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="config-gridlines" class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
+                                顯示工作表預設格線 (Gridlines)
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex-1 space-y-3">
-                    <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <h4 class="font-bold text-primary text-sm flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm">table_rows</span> 列位高度
-                        </h4>
-                        <p class="text-[10px] text-slate-500">第 1 ~ 23 列</p>
-                    </div>
-                    <div id="row-settings-container" class="space-y-2">
+
+                <div class="flex gap-6">
+                    <div class="flex-1 space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm h-64 overflow-y-auto">
+                        <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
+                            <h4 class="font-bold text-primary text-sm flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm">view_column</span> 欄位寬度 (A~K)
+                            </h4>
                         </div>
+                        <div id="col-settings-container" class="space-y-2"></div>
+                    </div>
+                    <div class="flex-1 space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm h-64 overflow-y-auto">
+                        <div class="sticky top-0 bg-white dark:bg-slate-900 pb-2 border-b border-slate-100 dark:border-slate-800">
+                            <h4 class="font-bold text-primary text-sm flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm">table_rows</span> 列位高度 (1~23)
+                            </h4>
+                        </div>
+                        <div id="row-settings-container" class="space-y-2"></div>
+                    </div>
                 </div>
             </div>
+
             <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                 <button type="button" id="btn-save-settings" class="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">
                     套用並儲存設定
@@ -265,16 +330,52 @@
         document.addEventListener('DOMContentLoaded', () => {
             let recordsData = [];
 
-            // --- 0. 測試項目名稱 localStorage ---
+            // --- 0. 儲存與同步標題/名稱 ---
             const testItemNameInput = document.getElementById('test-item-name');
-            if(localStorage.getItem('testItemName')) {
-                testItemNameInput.value = localStorage.getItem('testItemName');
+            const titleOverlap = document.getElementById('title-overlap');
+            const titleOffset = document.getElementById('title-offset');
+            
+            const labelSpecOverlap = document.getElementById('label-spec-overlap');
+            const labelSpecOffset = document.getElementById('label-spec-offset');
+            const labelInputOverlap = document.getElementById('label-input-overlap');
+            const labelInputOffset = document.getElementById('label-input-offset');
+
+            if(localStorage.getItem('testItemName')) testItemNameInput.value = localStorage.getItem('testItemName');
+            if(localStorage.getItem('titleOverlap')) titleOverlap.value = localStorage.getItem('titleOverlap');
+            if(localStorage.getItem('titleOffset')) titleOffset.value = localStorage.getItem('titleOffset');
+
+            function updateDynamicTitles() {
+                const t1 = titleOverlap.value || '測試一';
+                const t2 = titleOffset.value || '測試二';
+                
+                labelSpecOverlap.innerText = t1;
+                labelSpecOffset.innerText = t2;
+                labelInputOverlap.innerText = t1;
+                labelInputOffset.innerText = t2;
+
+                document.querySelectorAll('.log-label-overlap').forEach(el => {
+                    el.innerText = t1.substring(0, 1) + ':';
+                    el.title = t1;
+                });
+                document.querySelectorAll('.log-label-offset').forEach(el => {
+                    el.innerText = t2.substring(0, 1) + ':';
+                    el.title = t2;
+                });
             }
-            testItemNameInput.addEventListener('input', () => {
-                localStorage.setItem('testItemName', testItemNameInput.value);
+
+            testItemNameInput.addEventListener('input', () => localStorage.setItem('testItemName', testItemNameInput.value));
+            titleOverlap.addEventListener('input', () => {
+                localStorage.setItem('titleOverlap', titleOverlap.value);
+                updateDynamicTitles();
+            });
+            titleOffset.addEventListener('input', () => {
+                localStorage.setItem('titleOffset', titleOffset.value);
+                updateDynamicTitles();
             });
 
-            // --- 1. 樣本數增減與手動輸入 ---
+            updateDynamicTitles();
+
+            // --- 1. 樣本數邏輯 ---
             const btnDecrement = document.getElementById('btn-decrement');
             const btnIncrement = document.getElementById('btn-increment');
             const sampleCountInput = document.getElementById('sample-count');
@@ -303,7 +404,7 @@
                 targetCount++; updateProgressDisplay();
             });
 
-            // --- 2. 相機拍照預覽 ---
+            // --- 2. 拍照預覽 ---
             const uploadZone = document.getElementById('upload-zone');
             const cameraInput = document.getElementById('camera-input');
             const photoPreview = document.getElementById('photo-preview');
@@ -330,7 +431,7 @@
                 }
             });
 
-            // --- 3. 動態 Step 與自動判定邏輯 ---
+            // --- 3. 動態 Step 與自動判定 ---
             const decimalPlacesSelect = document.getElementById('decimal-places');
             function getDecimalPlaces() { return parseInt(decimalPlacesSelect.value) || 0; }
 
@@ -411,13 +512,13 @@
             specOffsetTarget.addEventListener('input', checkAutoJudge);
             specOffsetTol.addEventListener('input', checkAutoJudge);
 
-            // --- 4. 數據記錄邏輯 ---
+            // --- 4. 數據記錄 ---
             const activeEntryNo = document.getElementById('active-entry-no');
             const logContainer = document.getElementById('log-container');
 
             function logData() {
                 if (currentJudgeStatus === 'PENDING') {
-                    alert('請確認已輸入完整的接疊量與接合段差數值！');
+                    alert('請確認已輸入完整的數值！');
                     return;
                 }
 
@@ -427,6 +528,7 @@
                 const overlapValStr = parseFloat(inputOverlap.value).toFixed(dec);
                 const offsetValStr = parseFloat(inputOffset.value).toFixed(dec);
                 const statusColor = currentJudgeStatus === 'OK' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
+
                 const overlapTextClass = currentOverlapOk ? 'text-slate-700 dark:text-slate-200' : 'text-red-500 font-bold';
                 const offsetTextClass = currentOffsetOk ? 'text-slate-700 dark:text-slate-200' : 'text-red-500 font-bold';
 
@@ -439,15 +541,20 @@
                     "外觀判定": currentJudgeStatus
                 });
 
+                const t1Initial = (titleOverlap.value || '測試一').substring(0, 1) + ':';
+                const t2Initial = (titleOffset.value || '測試二').substring(0, 1) + ':';
+
                 const logEntryHTML = `
                     <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs animate-fade-in mb-3">
                         <div class="flex items-center gap-4">
                             <span class="font-bold">#${String(currentEntry).padStart(2, '0')}</span>
                             <div class="flex gap-4">
-                                <div class="flex items-center gap-1 font-bold text-slate-500">O: 
+                                <div class="flex items-center gap-1 font-bold text-slate-500">
+                                    <span class="log-label-overlap" title="${titleOverlap.value || '測試一'}">${t1Initial}</span> 
                                     <input data-id="${currentEntry}" data-field="overlap" type="number" step="${stepVal}" class="edit-input w-12 bg-transparent border-b border-dashed border-slate-400 text-center outline-none p-0 focus:border-primary ${overlapTextClass}" value="${overlapValStr}">
                                 </div>
-                                <div class="flex items-center gap-1 font-bold text-slate-500">S: 
+                                <div class="flex items-center gap-1 font-bold text-slate-500">
+                                    <span class="log-label-offset" title="${titleOffset.value || '測試二'}">${t2Initial}</span> 
                                     <input data-id="${currentEntry}" data-field="offset" type="number" step="${stepVal}" class="edit-input w-12 bg-transparent border-b border-dashed border-slate-400 text-center outline-none p-0 focus:border-primary ${offsetTextClass}" value="${offsetValStr}">
                                 </div>
                             </div>
@@ -509,7 +616,7 @@
                 }
             });
 
-            // --- 👉 5. Excel 寬高設定 (Modal 控制與資料結構) ---
+            // --- 5. Excel 版面與框線設定 (Modal 邏輯) ---
             const btnOpenSettings = document.getElementById('btn-open-settings');
             const btnCloseSettings = document.getElementById('btn-close-settings');
             const btnSaveSettings = document.getElementById('btn-save-settings');
@@ -517,18 +624,26 @@
             const colContainer = document.getElementById('col-settings-container');
             const rowContainer = document.getElementById('row-settings-container');
 
-            // 預設寬高設定值 (A~K欄, 1~23列)
+            // 框線 UI 控制
+            const styleOptions = document.querySelectorAll('.style-option');
+            const presetBtns = document.querySelectorAll('.preset-btn');
+            const checkboxGridlines = document.getElementById('config-gridlines');
+
+            // 👉 更新：將第 13, 17 列預設為 15；第 14, 18 列預設為 5
             let excelConfig = {
                 cols: { A: 0.6, B: 12, C: 12, D: 12, E: 12, F: 12, G: 12, H: 12, I: 12, J: 12, K: 12 },
                 rows: { 
                     1: 10.5, 2: 25, 3: 5, 4: 25, 5: 25, 6: 25, 7: 25, 8: 25, 
-                    9: 15, 10: 20, 11: 15, 12: 15, 13: 5, 14: 15, 15: 15, 16: 15, 
-                    17: 5, 18: 15, 19: 15, 20: 15, 21: 5, 22: 15, 23: 15 
-                }
+                    9: 15, 10: 20, 11: 15, 12: 15, 13: 15, 14: 5, 15: 15, 16: 15, 
+                    17: 15, 18: 5, 19: 15, 20: 15, 21: 15, 22: 5, 23: 15 
+                },
+                borderStyle: 'thin', // 預設線條樣式
+                borderPreset: 'all', // 預設全部框線
+                showGridLines: false // 預設不顯示格線
             };
             const colLetters = ['A','B','C','D','E','F','G','H','I','J','K'];
 
-            // 動態生成輸入框
+            // 生成寬高設定 Input
             colLetters.forEach(col => {
                 colContainer.insertAdjacentHTML('beforeend', `
                     <div class="flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 pb-1">
@@ -546,7 +661,24 @@
                 `);
             }
 
-            // 開關 Modal
+            // 線條樣式點擊邏輯
+            styleOptions.forEach(opt => {
+                opt.addEventListener('click', () => {
+                    styleOptions.forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    excelConfig.borderStyle = opt.dataset.style;
+                });
+            });
+
+            // 格式預設點擊邏輯
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    presetBtns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    excelConfig.borderPreset = btn.dataset.preset;
+                });
+            });
+
             btnOpenSettings.addEventListener('click', () => {
                 settingsModal.classList.remove('hidden');
                 settingsModal.classList.add('flex');
@@ -555,20 +687,24 @@
                 settingsModal.classList.add('hidden');
                 settingsModal.classList.remove('flex');
             });
-            // 儲存設定並關閉
+
             btnSaveSettings.addEventListener('click', () => {
+                // 儲存欄寬列高
                 colLetters.forEach(col => {
                     excelConfig.cols[col] = parseFloat(document.getElementById(`config-col-${col}`).value) || 12;
                 });
                 for(let r=1; r<=23; r++){
                     excelConfig.rows[r] = parseFloat(document.getElementById(`config-row-${r}`).value) || 15;
                 }
+                // 儲存格線開關
+                excelConfig.showGridLines = checkboxGridlines.checked;
+
                 settingsModal.classList.add('hidden');
                 settingsModal.classList.remove('flex');
-                alert("版面寬高設定已暫存！下次轉出 Excel 將套用此設定。");
+                alert("版面與框線設定已暫存！");
             });
 
-            // --- 6. 匯出 ExcelJS 邏輯 ---
+            // --- 6. 匯出 Excel ---
             const btnExport = document.getElementById('btn-export');
 
             btnExport.addEventListener('click', async () => {
@@ -583,25 +719,31 @@
                 try {
                     const itemName = testItemNameInput.value.trim() || "未命名測試項目";
                     const fileName = `${itemName}.xlsx`;
+                    
+                    const t1Name = titleOverlap.value || '測試一';
+                    const t2Name = titleOffset.value || '測試二';
 
                     const workbook = new ExcelJS.Workbook();
                     const worksheet = workbook.addWorksheet('數據紀錄', {
-                        views: [{ showGridLines: false }] // 隱藏格線
+                        // 👉 帶入介面中設定的格線狀態
+                        views: [{ showGridLines: excelConfig.showGridLines }] 
                     });
 
-                    // 套用自訂義的欄位寬度 (A~K 等於 1~11)
                     colLetters.forEach((col, index) => {
                         worksheet.getColumn(index + 1).width = excelConfig.cols[col];
                     });
+                    worksheet.getRow(1).height = excelConfig.rows[1];
 
-                    // --- 大標題 (第 2 列) ---
+                    // --- 大標題 ---
                     worksheet.mergeCells('B2:K2');
                     const titleCell = worksheet.getCell('B2');
                     titleCell.value = itemName;
                     titleCell.font = { name: '微軟正黑體', size: 16, bold: true };
                     titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-                    // --- 照片區域 (B4:F8) ---
+                    worksheet.getRow(3).height = excelConfig.rows[3];
+
+                    // --- 照片區域 ---
                     let base64Image = previewImg.src;
                     if (base64Image && base64Image.startsWith('data:image')) {
                         let extension = base64Image.substring("data:image/".length, base64Image.indexOf(";base64"));
@@ -612,7 +754,7 @@
                         worksheet.addImage(imageId, 'B4:F8');
                     }
 
-                    // --- 規格要求區域 (G4:K8) ---
+                    // --- 規格要求區域 ---
                     const oTarget = specOverlapTarget.value;
                     const oTol = specOverlapTol.value;
                     const sTol = specOffsetTol.value;
@@ -623,10 +765,10 @@
                     specTitle.font = { name: '微軟正黑體', size: 12, bold: true };
 
                     worksheet.mergeCells('G5:K5');
-                    worksheet.getCell('G5').value = `8.1 接疊量 (Overlap): ${oTarget} ± ${oTol} mm`;
+                    worksheet.getCell('G5').value = `8.1 ${t1Name}: ${oTarget} ± ${oTol} mm`;
                     
                     worksheet.mergeCells('G6:K6');
-                    worksheet.getCell('G6').value = `8.2 接合段差 (Offset): ± ${sTol} mm`;
+                    worksheet.getCell('G6').value = `8.2 ${t2Name}: ± ${sTol} mm`;
 
                     worksheet.mergeCells('G7:K7');
                     worksheet.getCell('G7').value = `8.3 尖角外觀: 無下垂 / 無反摺`;
@@ -636,7 +778,11 @@
                         if(i>4) worksheet.getCell(`G${i}`).font = { name: '微軟正黑體', size: 11 };
                     }
 
-                    // --- 數據區塊標題 (第 10 列) ---
+                    for(let i = 4; i <= 8; i++) {
+                        worksheet.getRow(i).height = excelConfig.rows[i];
+                    }
+
+                    // --- 數據區塊 ---
                     let dataStartRow = 10;
                     worksheet.mergeCells(`B${dataStartRow}:K${dataStartRow}`);
                     let dataTitle = worksheet.getCell(`B${dataStartRow}`);
@@ -644,27 +790,54 @@
                     dataTitle.font = { name: '微軟正黑體', size: 12, bold: true };
                     dataTitle.alignment = { vertical: 'middle', horizontal: 'left' };
 
-                    // --- 數據網格 (每 10 筆一組，由第 11 列開始) ---
                     let currentRow = dataStartRow + 1;
                     const columnsPerRow = 10;
 
+                    // 👉 取得使用者選擇的框線樣式與套用規則
+                    const bStyle = excelConfig.borderStyle; 
+                    const bPreset = excelConfig.borderPreset; 
+
                     for (let i = 0; i < targetCount; i += columnsPerRow) {
-                        let r1 = currentRow;     // Header
-                        let r2 = currentRow + 1; // Overlap
-                        let r3 = currentRow + 2; // Offset
+                        let r1 = currentRow;     
+                        let r2 = currentRow + 1; 
+                        let r3 = currentRow + 2; 
 
                         for (let j = 0; j < columnsPerRow; j++) {
-                            let colNum = j + 2; // 從 B 欄開始
+                            let colNum = j + 2; 
                             let recIndex = i + j;
                             
                             let cellHead = worksheet.getRow(r1).getCell(colNum);
                             let cellOver = worksheet.getRow(r2).getCell(colNum);
                             let cellOff = worksheet.getRow(r3).getCell(colNum);
 
-                            [cellHead, cellOver, cellOff].forEach(c => {
-                                c.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                            // 👉 依據框線規則動態畫線
+                            let isFirstRow = true;
+                            let isLastRow = true;
+                            let isLeftCol = (j === 0);
+                            let isRightCol = (j === columnsPerRow - 1);
+
+                            [cellHead, cellOver, cellOff].forEach((c, cIdx) => {
                                 c.alignment = { vertical: 'middle', horizontal: 'center' };
                                 c.font = { name: '微軟正黑體', size: 11 };
+                                
+                                let borderObj = {};
+                                let isTopEdge = (cIdx === 0);
+                                let isBottomEdge = (cIdx === 2);
+
+                                if (bPreset === 'all') {
+                                    borderObj = { top: {style:bStyle}, left: {style:bStyle}, bottom: {style:bStyle}, right: {style:bStyle} };
+                                } else if (bPreset === 'outline') {
+                                    if (isTopEdge) borderObj.top = {style:bStyle};
+                                    if (isBottomEdge) borderObj.bottom = {style:bStyle};
+                                    if (isLeftCol) borderObj.left = {style:bStyle};
+                                    if (isRightCol) borderObj.right = {style:bStyle};
+                                } else if (bPreset === 'inside') {
+                                    if (!isTopEdge) borderObj.top = {style:bStyle};
+                                    if (!isBottomEdge) borderObj.bottom = {style:bStyle};
+                                    if (!isLeftCol) borderObj.left = {style:bStyle};
+                                    if (!isRightCol) borderObj.right = {style:bStyle};
+                                }
+                                c.border = borderObj;
                             });
 
                             if (recIndex < targetCount) {
@@ -681,26 +854,24 @@
                                 }
                             }
                         }
+                        
                         currentRow += 4; 
+                        worksheet.getRow(currentRow - 1).height = excelConfig.rows[14] || 5; 
                     }
 
-                    // --- 底部備註 ---
+                    // --- 底部 ---
                     worksheet.mergeCells(`B${currentRow}:K${currentRow}`);
                     let footerCell = worksheet.getCell(`B${currentRow}`);
                     footerCell.value = "驗證過程中不可超出標準。";
                     footerCell.font = { name: '微軟正黑體', size: 14, bold: true, color: { argb: 'FFFF0000' } };
                     footerCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-                    // 👉 套用自訂義的列位高度 (1~23列)
-                    // 必須放在最後執行，確保不被內容預設撐開的高度蓋掉
+                    // 套用自訂列高
                     for (let r = 1; r <= 23; r++) {
-                        worksheet.getRow(r).height = excelConfig.rows[r];
+                        if(excelConfig.rows[r]) worksheet.getRow(r).height = excelConfig.rows[r];
                     }
-                    // 確保動態產生的後續間隔列也有正確高度 (如果超過30筆資料)
                     if(targetCount > 30) {
-                        for(let r = 25; r <= currentRow; r+=4) {
-                             worksheet.getRow(r).height = 5;
-                        }
+                        for(let r = 25; r <= currentRow; r+=4) worksheet.getRow(r).height = excelConfig.rows[14] || 5;
                     }
 
                     const buffer = await workbook.xlsx.writeBuffer();
@@ -708,7 +879,7 @@
                 
                 } catch (error) {
                     console.error(error);
-                    alert("匯出發生錯誤，請檢查照片格式或稍後再試。");
+                    alert("匯出發生錯誤，請稍後再試。");
                 } finally {
                     btnExport.innerHTML = originalBtnHtml;
                 }
