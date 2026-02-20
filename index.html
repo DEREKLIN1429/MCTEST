@@ -34,6 +34,14 @@
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
+        /* 加入一個簡單的淡入動畫，讓新紀錄出現時更平滑 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
@@ -47,7 +55,7 @@
             </div>
             <div class="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">
                 <span class="material-symbols-outlined text-sm">analytics</span>
-                <span>進度: 0 / 30</span>
+                <span id="progress-text">進度: 0 / 30</span>
             </div>
         </div>
     </header>
@@ -93,9 +101,7 @@
                             <p id="upload-text-main" class="font-semibold">載入試車照片</p>
                             <p class="text-xs text-slate-500 mt-1">Upload Device Photos</p>
                         </div>
-                        
                         <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" />
-                        
                         <div id="photo-preview" class="w-full hidden mt-2">
                             <img id="preview-img" src="" class="w-full h-32 object-cover rounded-lg border border-slate-200 dark:border-slate-700" alt="預覽照片"/>
                         </div>
@@ -143,44 +149,31 @@
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <div class="flex items-center gap-2">
                         <span class="bg-primary text-white text-xs px-2 py-0.5 rounded">ACTIVE</span>
-                        <span class="font-bold text-primary">No. 01</span>
+                        <span id="active-entry-no" class="font-bold text-primary">No. 01</span>
                     </div>
                     <span class="material-symbols-outlined text-slate-400">more_horiz</span>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1">
                         <label class="text-xs font-semibold text-slate-500">接疊量 (Overlap)</label>
-                        <input class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-center font-bold text-lg" placeholder="4.0" type="number" value="4.0"/>
+                        <input id="input-overlap" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-center font-bold text-lg" placeholder="4.0" type="number" value="4.0"/>
                     </div>
                     <div class="space-y-1">
                         <label class="text-xs font-semibold text-slate-500">接合段差 (Offset)</label>
-                        <input class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-center font-bold text-lg" placeholder="0.0" type="number" value="0.0"/>
+                        <input id="input-offset" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-center font-bold text-lg" placeholder="0.0" type="number" value="0.0"/>
                     </div>
                 </div>
                 <div class="space-y-2">
                     <label class="text-xs font-semibold text-slate-500">外觀判定 (Appearance)</label>
                     <div class="flex gap-3">
-                        <button type="button" class="flex-1 py-3 text-sm font-bold rounded-xl border-2 border-green-500 bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white transition-all">OK (合格)</button>
-                        <button type="button" class="flex-1 py-3 text-sm font-bold rounded-xl border-2 border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all">NG (不合格)</button>
+                        <button type="button" id="btn-ok" class="flex-1 py-3 text-sm font-bold rounded-xl border-2 border-green-500 bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white transition-all">OK (合格)</button>
+                        <button type="button" id="btn-ng" class="flex-1 py-3 text-sm font-bold rounded-xl border-2 border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all">NG (不合格)</button>
                     </div>
                 </div>
             </div>
 
-            <div class="space-y-3 opacity-60">
-                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
-                    <div class="flex items-center gap-4">
-                        <span class="font-bold">#00</span>
-                        <div class="flex gap-3">
-                            <span>O: 4.1</span>
-                            <span>S: 0.1</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 bg-green-500/20 text-green-500 rounded font-bold">OK</span>
-                        <span class="material-symbols-outlined text-sm text-slate-400 font-light">edit</span>
-                    </div>
-                </div>
-                <p class="text-center text-[10px] text-slate-500 uppercase tracking-widest pt-2">Previous entries stored below</p>
+            <div id="log-container" class="space-y-3 opacity-60">
+                <p id="log-hint-text" class="text-center text-[10px] text-slate-500 uppercase tracking-widest pt-2">Previous entries stored below</p>
             </div>
         </section>
     </main>
@@ -207,23 +200,26 @@
             const btnDecrement = document.getElementById('btn-decrement');
             const btnIncrement = document.getElementById('btn-increment');
             const sampleCountEl = document.getElementById('sample-count');
+            const progressText = document.getElementById('progress-text');
             
-            let currentCount = 30; // 預設值
+            let targetCount = 30; // 目標樣本數
+            let currentEntry = 1; // 目前正在測試的編號
 
-            function updateCountDisplay() {
-                sampleCountEl.innerText = currentCount;
+            function updateProgressDisplay() {
+                sampleCountEl.innerText = targetCount;
+                progressText.innerText = `進度: ${currentEntry - 1} / ${targetCount}`;
             }
 
             btnDecrement.addEventListener('click', () => {
-                if (currentCount > 1) { // 限制最小值為 1
-                    currentCount--;
-                    updateCountDisplay();
+                if (targetCount > 1) { 
+                    targetCount--;
+                    updateProgressDisplay();
                 }
             });
 
             btnIncrement.addEventListener('click', () => {
-                currentCount++;
-                updateCountDisplay();
+                targetCount++;
+                updateProgressDisplay();
             });
 
             // --- 2. 相機拍照與預覽邏輯 ---
@@ -234,34 +230,82 @@
             const uploadIcon = document.getElementById('upload-icon');
             const uploadTextMain = document.getElementById('upload-text-main');
 
-            // 點擊虛線框觸發 input file
             uploadZone.addEventListener('click', (e) => {
-                // 避免重複點擊觸發（如果使用者點到隱藏的 input）
                 if (e.target !== cameraInput) {
                     cameraInput.click();
                 }
             });
 
-            // 當選取照片或拍完照後
             cameraInput.addEventListener('change', function() {
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    
                     reader.onload = function(e) {
-                        // 顯示圖片
                         previewImg.src = e.target.result;
                         photoPreview.classList.remove('hidden');
-                        
-                        // 更新 UI 提示文字
                         uploadTextMain.innerText = "照片已載入";
                         uploadIcon.innerText = "check_circle";
                         uploadIcon.classList.remove('text-primary');
                         uploadIcon.classList.add('text-green-500');
                     };
-                    
                     reader.readAsDataURL(this.files[0]);
                 }
             });
+
+            // --- 3. 數據記錄邏輯 (OK / NG 按鈕) ---
+            const btnOk = document.getElementById('btn-ok');
+            const btnNg = document.getElementById('btn-ng');
+            const inputOverlap = document.getElementById('input-overlap');
+            const inputOffset = document.getElementById('input-offset');
+            const activeEntryNo = document.getElementById('active-entry-no');
+            const logContainer = document.getElementById('log-container');
+            const logHintText = document.getElementById('log-hint-text');
+
+            // 建立並儲存新紀錄的函式
+            function logData(status) {
+                // 1. 取得輸入的值
+                const overlapVal = inputOverlap.value || "0.0";
+                const offsetVal = inputOffset.value || "0.0";
+                
+                // 2. 判斷狀態顏色
+                const isOk = status === 'OK';
+                const statusColor = isOk ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
+
+                // 3. 建立新紀錄的 HTML 結構 (使用樣板字面值)
+                const logEntryHTML = `
+                    <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs animate-fade-in mb-3">
+                        <div class="flex items-center gap-4">
+                            <span class="font-bold">#${String(currentEntry).padStart(2, '0')}</span>
+                            <div class="flex gap-3">
+                                <span>O: ${overlapVal}</span>
+                                <span>S: ${offsetVal}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 ${statusColor} rounded font-bold">${status}</span>
+                            <span class="material-symbols-outlined text-sm text-slate-400 font-light cursor-pointer hover:text-primary transition-colors">edit</span>
+                        </div>
+                    </div>
+                `;
+
+                // 4. 將新紀錄插入到提示文字之前
+                logContainer.insertAdjacentHTML('afterbegin', logEntryHTML);
+
+                // 5. 更新進度與編號
+                currentEntry++;
+                activeEntryNo.innerText = `No. ${String(currentEntry).padStart(2, '0')}`;
+                updateProgressDisplay();
+
+                // 6. 重置輸入框的值為預設狀態
+                inputOverlap.value = "4.0";
+                inputOffset.value = "0.0";
+            }
+
+            // 綁定點擊事件
+            btnOk.addEventListener('click', () => logData('OK'));
+            btnNg.addEventListener('click', () => logData('NG'));
+            
+            // 初始化顯示
+            updateProgressDisplay();
         });
     </script>
 </body>
