@@ -7,6 +7,9 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -34,7 +37,6 @@
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
-        /* 加入一個簡單的淡入動畫，讓新紀錄出現時更平滑 */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -74,7 +76,7 @@
                         <div class="flex justify-between items-center">
                             <p class="text-sm font-medium">測試項目名稱 (Test Item Name)</p>
                         </div>
-                        <input class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="請輸入測試項目..." type="text"/>
+                        <input id="test-item-name" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="請輸入測試項目..." type="text"/>
                     </div>
                     
                     <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
@@ -183,9 +185,9 @@
             <span class="material-symbols-outlined">save</span>
             暫存
         </button>
-        <button type="button" class="flex-[2] py-4 px-6 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined">send</span>
-            提交紀錄
+        <button type="button" id="btn-export" class="flex-[2] py-4 px-6 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined">download</span>
+            轉出 Excel
         </button>
     </nav>
     
@@ -196,14 +198,17 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- 全局資料儲存陣列 (準備匯出給 Excel 用) ---
+            let recordsData = [];
+
             // --- 1. 樣本數增減邏輯 ---
             const btnDecrement = document.getElementById('btn-decrement');
             const btnIncrement = document.getElementById('btn-increment');
             const sampleCountEl = document.getElementById('sample-count');
             const progressText = document.getElementById('progress-text');
             
-            let targetCount = 30; // 目標樣本數
-            let currentEntry = 1; // 目前正在測試的編號
+            let targetCount = 30; 
+            let currentEntry = 1; 
 
             function updateProgressDisplay() {
                 sampleCountEl.innerText = targetCount;
@@ -258,19 +263,22 @@
             const inputOffset = document.getElementById('input-offset');
             const activeEntryNo = document.getElementById('active-entry-no');
             const logContainer = document.getElementById('log-container');
-            const logHintText = document.getElementById('log-hint-text');
 
-            // 建立並儲存新紀錄的函式
             function logData(status) {
-                // 1. 取得輸入的值
                 const overlapVal = inputOverlap.value || "0.0";
                 const offsetVal = inputOffset.value || "0.0";
-                
-                // 2. 判斷狀態顏色
                 const isOk = status === 'OK';
                 const statusColor = isOk ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500';
 
-                // 3. 建立新紀錄的 HTML 結構 (使用樣板字面值)
+                // 👉 將資料儲存到陣列中，為轉出 Excel 做準備
+                recordsData.push({
+                    "編號": currentEntry,
+                    "接疊量 (Overlap)": overlapVal,
+                    "接合段差 (Offset)": offsetVal,
+                    "外觀判定": status,
+                    "紀錄時間": new Date().toLocaleString()
+                });
+
                 const logEntryHTML = `
                     <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs animate-fade-in mb-3">
                         <div class="flex items-center gap-4">
@@ -287,23 +295,45 @@
                     </div>
                 `;
 
-                // 4. 將新紀錄插入到提示文字之前
                 logContainer.insertAdjacentHTML('afterbegin', logEntryHTML);
-
-                // 5. 更新進度與編號
                 currentEntry++;
                 activeEntryNo.innerText = `No. ${String(currentEntry).padStart(2, '0')}`;
                 updateProgressDisplay();
 
-                // 6. 重置輸入框的值為預設狀態
                 inputOverlap.value = "4.0";
                 inputOffset.value = "0.0";
             }
 
-            // 綁定點擊事件
             btnOk.addEventListener('click', () => logData('OK'));
             btnNg.addEventListener('click', () => logData('NG'));
             
+            // --- 4. 匯出 EXCEL 邏輯 ---
+            const btnExport = document.getElementById('btn-export');
+            const testItemNameInput = document.getElementById('test-item-name');
+
+            btnExport.addEventListener('click', () => {
+                // 檢查是否有資料可以匯出
+                if (recordsData.length === 0) {
+                    alert("目前沒有任何紀錄可以轉出喔！請先新增數據。");
+                    return;
+                }
+
+                // 取得測試項目名稱，作為檔案名稱的一部分
+                const itemName = testItemNameInput.value.trim() || "未命名測試項目";
+                const fileName = `試車紀錄_${itemName}.xlsx`;
+
+                // 使用 SheetJS 將 JSON 陣列轉換為工作表
+                const worksheet = XLSX.utils.json_to_sheet(recordsData);
+                // 建立一個新的活頁簿
+                const workbook = XLSX.utils.book_new();
+                
+                // 將工作表加入活頁簿，並命名為 '數據紀錄'
+                XLSX.utils.book_append_sheet(workbook, worksheet, "數據紀錄");
+                
+                // 觸發下載 Excel 檔案
+                XLSX.writeFile(workbook, fileName);
+            });
+
             // 初始化顯示
             updateProgressDisplay();
         });
